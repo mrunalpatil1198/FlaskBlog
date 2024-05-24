@@ -10,7 +10,8 @@ from flask_login import login_user, current_user, logout_user, login_required
 @app.route("/")
 @app.route("/home")
 def home():
-    posts = Post.query.all()
+    page = request.args.get('page', 1, type=int)
+    posts = Post.query.order_by(Post.date_posted.desc()).paginate(page=page, per_page=5)
     return render_template('home.html', posts=posts)
 
 
@@ -70,6 +71,7 @@ def save_picture(form_picture):
 
     return picture_fn
 
+
 @app.route("/account", methods=['GET', 'POST'])
 @login_required
 def account():
@@ -89,6 +91,7 @@ def account():
     image_file = url_for('static', filename='profile_pics/'+ current_user.image_file)
     return render_template('account.html', title='Account', image_file=image_file, form=form)
 
+
 @app.route("/post/new", methods=['GET', 'POST'])
 @login_required
 def new_post():
@@ -101,10 +104,12 @@ def new_post():
         return redirect(url_for('home'))
     return render_template('creat_post.html', titile='New Post', form=form, legend='Update Post')
 
+
 @app.route("/post/<int:post_id>")
 def post(post_id):
     post = Post.query.get_or_404(post_id)
     return render_template('post.html', title=post.title, post=post)
+
 
 @login_required
 @app.route("/post/<int:post_id>/update", methods=['GET', 'POST'])
@@ -124,6 +129,7 @@ def update_post(post_id):
         form.content.data = post.content
     return render_template('creat_post.html', titile='Update Post', form=form, legend='Update Post')
 
+
 @login_required
 @app.route("/post/<int:post_id>/delete", methods=['POST'])
 def delete_post(post_id):
@@ -134,3 +140,13 @@ def delete_post(post_id):
     db.session.commit()
     flash('Your post has been deleted!', 'success')
     return redirect(url_for('home'))
+
+
+@app.route("/user/<string:username>")
+def user_posts(username):
+    page = request.args.get('page', 1, type=int)
+    user = User.query.filter_by(username=username).first_or_404()
+    posts = Post.query.filter_by(author=user)\
+        .order_by(Post.date_posted.desc())\
+        .paginate(page=page, per_page=5)
+    return render_template('user_posts.html', posts=posts, user=user)
